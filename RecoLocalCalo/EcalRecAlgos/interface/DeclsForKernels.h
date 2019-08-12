@@ -26,6 +26,8 @@
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalTimeBiasCorrectionsGPU.h"
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalTimeCalibConstantsGPU.h"
 
+#include "CUDADataFormats/EcalDigi/interface/DigisCollection.h"
+
 class EcalPulseShape;
 class EcalSampleMask;
 class EcalTimeBiasCorrections;
@@ -48,28 +50,10 @@ enum class MinimizationState : char {
     Precomputed = 2,
 };
 
-// event input data on cpu, just const refs
-struct EventInputDataCPU {
-    EBDigiCollection const& ebDigis;
-    EEDigiCollection const& eeDigis;
-};
-
 //
 struct EventInputDataGPU {
-    uint16_t *digis;
-    uint32_t *ids;
-
-    void allocate(uint32_t size) {
-        cudaCheck( cudaMalloc((void**)&digis,
-            sizeof(uint16_t) * size * EcalDataFrame::MAXSAMPLES) );
-        cudaCheck( cudaMalloc((void**)&ids,
-            sizeof(uint32_t) * size) );
-    }
-
-    void deallocate() {
-        cudaCheck( cudaFree(digis) );
-        cudaCheck( cudaFree(ids) );
-    }
+    ecal::DigisCollection const& ebDigis;
+    ecal::DigisCollection const& eeDigis;
 };
 
 // parameters have a fixed type
@@ -291,5 +275,71 @@ struct conf_data {
 };
 
 }}
+
+
+
+
+// 
+// ECAL Rechit producer
+// 
+
+#include "CUDADataFormats/EcalRecHitSoA/interface/EcalRecHit_soa.h"
+
+namespace ecal { 
+  namespace rechit {
+    
+   struct EventOutputDataGPU final : public ::ecal::RecHit<::ecal::Tag::ptr> {
+    
+//      void allocate(ConfigurationParameters const& configParameters, uint32_t size) {
+     void allocate(uint32_t size) {
+       
+      cudaCheck( cudaMalloc((void**)&energy,
+                            size * sizeof(::ecal::reco::StorageScalarType)) );
+      cudaCheck( cudaMalloc((void**)&time,
+                            size * sizeof(::ecal::reco::StorageScalarType)) );
+      cudaCheck( cudaMalloc((void**)&chi2,
+                            size * sizeof(::ecal::reco::StorageScalarType)) );
+      cudaCheck( cudaMalloc((void**)&flagBits,
+                            size * sizeof(uint32_t)) );
+      cudaCheck( cudaMalloc((void**)&extra,
+                            size * sizeof(uint32_t)) );
+      
+      cudaCheck( cudaMalloc((void**)&did,
+                            size * sizeof(uint32_t)) );
+    }
+    
+    
+//     void deallocate(ConfigurationParameters const& configParameters) {
+    void deallocate() {
+      cudaCheck( cudaFree(energy) );
+      cudaCheck( cudaFree(time) );
+      cudaCheck( cudaFree(chi2) );
+      cudaCheck( cudaFree(flagBits) );
+      cudaCheck( cudaFree(extra) );
+      cudaCheck( cudaFree(did) );
+    }
+  };
+  
+
+  
+  struct EventInputDataGPU {
+    ecal::UncalibratedRecHit<ecal::Tag::ptr> const& ebUncalibRecHits;
+    ecal::UncalibratedRecHit<ecal::Tag::ptr> const& eeUncalibRecHits;
+  };
+  
+  
+  
+  }
+}
+
+
+
+
+
+
+
+
+
+
 
 #endif
