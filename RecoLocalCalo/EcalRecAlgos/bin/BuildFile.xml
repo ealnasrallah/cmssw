@@ -5,3 +5,31 @@
     <use name="DataFormats/Common"/>
     <use name="DataFormats/EcalRecHit"/>
 </bin>
+<bin name="makeEcalRechitValidationPlots" file="makeEcalRechitValidationPlots.cpp">
+    <use name="root"/>
+    <use name="rootgraphics"/>
+    <use name="CUDADataFormats/EcalRecHitSoA"/>
+    <use name="DataFormats/Common"/>
+    <use name="DataFormats/EcalRecHit"/>
+</bin>
+<bin name="makeEcalRechitEtaTestValidationPlots" file="makeEcalRechitEtaValidationPlots.cpp">
+    <use name="root"/>
+    <use name="rootgraphics"/>
+    <use name="CUDADataFormats/EcalRecHitSoA"/>
+    <use name="DataFormats/Common"/>
+    <use name="DataFormats/EcalRecHit"/>
+</bin>
+<bin name="valRechitTest" file="rechitValTest.cpp">
+    <use name="root"/>
+    <use name="rootgraphics"/>
+    <use name="CUDADataFormats/EcalRecHitSoA"/>
+    <use name="DataFormats/Common"/>
+    <use name="DataFormats/EcalRecHit"/>
+</bin>
+<bin name="valUncalibRechitTest" file="uncalibRechitValTest.cpp">
+    <use name="root"/>
+    <use name="rootgraphics"/>
+    <use name="CUDADataFormats/EcalRecHitSoA"/>
+    <use name="DataFormats/Common"/>
+    <use name="DataFormats/EcalRecHit"/>
+</bin>
