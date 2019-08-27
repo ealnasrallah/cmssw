@@ -26,6 +26,9 @@
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalTimeBiasCorrectionsGPU.h"
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalTimeCalibConstantsGPU.h"
 
+
+#include "CUDADataFormats/EcalDigi/interface/DigisCollection.h"
+
 class EcalPulseShape;
 class EcalSampleMask;
 class EcalTimeBiasCorrections;
@@ -48,28 +51,10 @@ enum class MinimizationState : char {
     Precomputed = 2,
 };
 
-// event input data on cpu, just const refs
-struct EventInputDataCPU {
-    EBDigiCollection const& ebDigis;
-    EEDigiCollection const& eeDigis;
-};
-
 //
 struct EventInputDataGPU {
-    uint16_t *digis;
-    uint32_t *ids;
-
-    void allocate(uint32_t size) {
-        cudaCheck( cudaMalloc((void**)&digis,
-            sizeof(uint16_t) * size * EcalDataFrame::MAXSAMPLES) );
-        cudaCheck( cudaMalloc((void**)&ids,
-            sizeof(uint32_t) * size) );
-    }
-
-    void deallocate() {
-        cudaCheck( cudaFree(digis) );
-        cudaCheck( cudaFree(ids) );
-    }
+    ecal::DigisCollection const& ebDigis;
+    ecal::DigisCollection const& eeDigis;
 };
 
 // parameters have a fixed type
@@ -291,5 +276,121 @@ struct conf_data {
 };
 
 }}
+
+
+
+
+// 
+// ECAL Rechit producer
+// 
+
+#include "CUDADataFormats/EcalRecHitSoA/interface/EcalRecHit_soa.h"
+
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalADCToGeVConstantGPU.h"
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalIntercalibConstantsGPU.h"
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalChannelStatusGPU.h"
+
+
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalLaserAPDPNRatiosGPU.h"
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalLaserAPDPNRatiosRefGPU.h"
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalLaserAlphasGPU.h"
+#include "RecoLocalCalo/EcalRecAlgos/interface/EcalLinearCorrectionsGPU.h"
+
+
+
+
+namespace ecal { 
+  namespace rechit {
+    
+    // parameters that are read in the configuration file for rechit producer
+    struct ConfigurationParameters {
+      // device ptrs
+      int *ChannelStatusToBeExcluded=nullptr; 
+      uint32_t ChannelStatusToBeExcludedSize;
+      
+      bool killDeadChannels;
+      
+//       std::vector<std::vector<uint32_t> > v_DB_reco_flags;
+      uint32_t* expanded_v_DB_reco_flags;
+      uint32_t* expanded_Sizes_v_DB_reco_flags;
+      uint32_t* expanded_flagbit_v_DB_reco_flags;
+      uint32_t expanded_v_DB_reco_flagsSize;
+      
+      uint32_t flagmask;
+      
+      
+//       std::array<uint32_t, 3> kernelMinimizeThreads;
+//       
+//       bool shouldRunTimingComputation;
+    };
+    
+    
+    
+    
+    
+    
+   struct EventOutputDataGPU final : public ::ecal::RecHit<::ecal::Tag::ptr> {
+    
+     void allocate(ConfigurationParameters const& configParameters, uint32_t size) {
+       //      void allocate(uint32_t size) {
+       //---- configParameters -> needed only to decide if to save the timing information or not
+
+      cudaCheck( cudaMalloc((void**)&energy,
+                            size * sizeof(::ecal::reco::StorageScalarType)) );
+      cudaCheck( cudaMalloc((void**)&time,
+                            size * sizeof(::ecal::reco::StorageScalarType)) );
+      cudaCheck( cudaMalloc((void**)&chi2,
+                            size * sizeof(::ecal::reco::StorageScalarType)) );
+      cudaCheck( cudaMalloc((void**)&flagBits,
+                            size * sizeof(uint32_t)) );
+      cudaCheck( cudaMalloc((void**)&extra,
+                            size * sizeof(uint32_t)) );
+      
+      cudaCheck( cudaMalloc((void**)&did,
+                            size * sizeof(uint32_t)) );
+    }
+    
+    
+    void deallocate(ConfigurationParameters const& configParameters) {
+//     void deallocate() {
+ //---- configParameters -> needed only to decide if to save the timing information or not
+      
+      cudaCheck( cudaFree(energy) );
+      cudaCheck( cudaFree(time) );
+      cudaCheck( cudaFree(chi2) );
+      cudaCheck( cudaFree(flagBits) );
+      cudaCheck( cudaFree(extra) );
+      cudaCheck( cudaFree(did) );
+    }
+  };
+  
+
+  
+  struct EventInputDataGPU {
+    ecal::UncalibratedRecHit<ecal::Tag::ptr> const& ebUncalibRecHits;
+    ecal::UncalibratedRecHit<ecal::Tag::ptr> const& eeUncalibRecHits;
+  };
+      
+  // const refs products to conditions
+  struct ConditionsProducts {
+    EcalADCToGeVConstantGPU::Product    const& ADCToGeV;
+    EcalIntercalibConstantsGPU::Product const& Intercalib;
+    EcalChannelStatusGPU::Product       const& ChannelStatus;
+//     
+    EcalLaserAPDPNRatiosGPU::Product     const& LaserAPDPNRatios   ;
+    EcalLaserAPDPNRatiosRefGPU::Product  const& LaserAPDPNRatiosRef;
+    EcalLaserAlphasGPU::Product          const& LaserAlphas        ;
+    EcalLinearCorrectionsGPU::Product    const& LinearCorrections  ;
+//     
+//     
+    uint32_t offsetForHashes;    
+  };
+  
+  
+  
+  }
+}
+
+
 
 #endif
